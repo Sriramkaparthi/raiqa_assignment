@@ -1,66 +1,83 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import meals, { Meal, SelectedMeal } from "@/data/meals";
+import MealList from "@/components/MealList";
+import SelectedMeals from "@/components/SelectedMeals";
+
+const LS_KEY = "selectedMeals";
+
+export default function HomePage() {
+  const [selectedMeals, setSelectedMeals] = useState<SelectedMeal[]>([]);
+  const [showAll, setShowAll] = useState(false);
+  const [isSortedAsc, setIsSortedAsc] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      if (stored) setSelectedMeals(JSON.parse(stored));
+    } catch (e) {
+      console.error("Failed to load selected meals from localStorage", e);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(LS_KEY, JSON.stringify(selectedMeals));
+  }, [selectedMeals, hydrated]);
+
+  function handleAddOrIncrement(meal: Meal) {
+    setSelectedMeals((prev) => {
+      const existing = prev.find((m) => m.id === meal.id);
+      if (existing) {
+        return prev.map((m) =>
+          m.id === meal.id ? { ...m, quantity: m.quantity + 1 } : m
+        );
+      }
+      return [...prev, { id: meal.id, name: meal.name, price: meal.price, quantity: 1 }];
+    });
+  }
+
+  function handleUpdateQuantity(id: number, delta: number) {
+    setSelectedMeals((prev) =>
+      prev
+        .map((m) => (m.id === id ? { ...m, quantity: m.quantity + delta } : m))
+        .filter((m) => m.quantity > 0)
+    );
+  }
+
+  function handleRemoveMeal(id: number) {
+    setSelectedMeals((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  function handleReset() {
+    setSelectedMeals([]);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="page-container">
+      <h1 className="page-title">Menu</h1>
+      <p className="page-subtitle">Fill your cart with delicious meals from our menu.</p>
+
+      <MealList
+        meals={meals}
+        selectedMeals={selectedMeals}
+        showAll={showAll}
+        isSortedAsc={isSortedAsc}
+        onToggleFilter={() => setShowAll((prev) => !prev)}
+        onToggleSort={() => setIsSortedAsc((prev) => !prev)}
+        onAddOrIncrement={handleAddOrIncrement}
+        onUpdateQuantity={handleUpdateQuantity}
+      />
+
+      <SelectedMeals
+        selectedMeals={selectedMeals}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveMeal={handleRemoveMeal}
+        onReset={handleReset}
+      />
+    </main>
   );
 }
